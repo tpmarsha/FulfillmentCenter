@@ -1193,22 +1193,56 @@ sim_until = 86401*7
 #===============================================================================
 # Create list of order details
 
+### Set varying order arrival rates by weekday and hour
+### The factors are multiplicative, with the weekday modifying the base hourly rate
+
+orderWeekdayFactors = {0: 2.50, 1: 3.33, 2: 1.42, 3: 2.5, 
+                       4: 1.10, 5: 1.00, 6: 1.25}
+
+orderHourFactors = {0: 30.56118, 
+                    1: 54.01161, 
+                    2: 106.26632, 
+                    3: 207.85501, 
+                    4: 215.03588, 
+                    5: 213.78153, 
+                    6: 111.61141, 
+                    7: 45.72561, 
+                    8: 27.29694, 
+                    9: 21.61996, 
+                    10: 15.47543, 
+                    11: 18.15357, 
+                    12: 13.54276, 
+                    13: 13.46299, 
+                    14: 15.28291, 
+                    15: 18.14266, 
+                    16: 13.57966, 
+                    17: 18.0377, 
+                    18: 15.60327, 
+                    19: 11.97936, 
+                    20: 10.75827, 
+                    21: 12.09711, 
+                    22: 15.45324, 
+                    23: 21.59623}
+
 # Poisson parameter for each item frequency in orders
 mean_tshirt = 1.00
 mean_hoodie = 0.50
 mean_spants = 0.50
 mean_sneaks = 0.25
 
-orderGenClock = 0
 
-# TODO: Add varying exponential means by hour and weekday - jculbert
-# Current code generates exponential order arrivals with fixed mean
-orderTimeMean = 30 
 
 # Generate list of random order times
+start_date = datetime.datetime(2020, 10, 22, 0, 0, tzinfo=None)
+orderGenClock = 0
 orderTimes = []
 
 while orderGenClock < sim_until:
+    # Set order time parameter based on time of previous order
+    orderDateTime = start_date + datetime.timedelta(seconds=orderGenClock)
+    orderTimeMean = orderWeekdayFactors[orderDateTime.weekday()] * orderHourFactors[orderDateTime.hour]
+    
+    # Generate new order time based on current order time parameter
     orderGenClock = orderGenClock + np.random.exponential(orderTimeMean)
     orderTimes.append(orderGenClock)
 print(f'generated {len(orderTimes)} orders')
