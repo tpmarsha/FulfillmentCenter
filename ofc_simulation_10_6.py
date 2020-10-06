@@ -1193,33 +1193,51 @@ sim_until = 86401*7
 #===============================================================================
 # Create list of order details
 
-# TODO: Add exponential order time generation. Currently set to every 30 sec - jculbert
-
 # Poisson parameter for each item frequency in orders
 mean_tshirt = 1.00
 mean_hoodie = 0.50
 mean_spants = 0.50
 mean_sneaks = 0.25
 
+orderGenClock = 0
+
+# TODO: Add varying exponential means by hour and weekday - jculbert
+# Current code generates exponential order arrivals with fixed mean
+orderTimeMean = 30 
+
+# Generate list of random order times
+orderTimes = []
+
+while orderGenClock < sim_until:
+    orderGenClock = orderGenClock + np.random.exponential(orderTimeMean)
+    orderTimes.append(orderGenClock)
+print(f'generated {len(orderTimes)} orders')
+
+orderTimes.reverse() # Reverse list so we pop off the first orders first
+
 # Generate a list of candidate orders. Needs to be filtered to remove blanks
 # Filtering out blanks before order time generation to preserve statistical properties
 candidate_orders = []
-for i in range(divmod(sim_until,20)[0]):
+for i in range(len(orderTimes)*2):
     candidate_order = np.random.poisson([mean_tshirt, mean_hoodie, mean_spants, mean_sneaks])
     if candidate_order.max() > 0:
         candidate_orders.append(candidate_order)
 
 # Populate orders with entries from the candidate order list
 orders = {}
-for i in range(1,divmod(sim_until,30)[0]):
+for i in range(len(orderTimes)):
     next_order = candidate_orders.pop()
     orders[i] = {
-        'OrderTimeInSec': 30*i, 
+        'OrderTimeInSec': orderTimes.pop(), 
         'QtyShirt': next_order[0], 
         'QtyHoodie': next_order[1], 
         'QtySweatpants': next_order[2], 
         'QtySneakers': next_order[3]
     }
+
+# Print order list to log
+with open('orderlog.txt', 'w') as f:
+    print(orders, file=f)
 
 # Create list of CustomerOrder objects from order details
 orders_source = []
