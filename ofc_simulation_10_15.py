@@ -1666,7 +1666,7 @@ sim_run_name = (custom_prefix +
     datetime.datetime.now().strftime('%m%d%Y%H%M') +
     "_profit_" + str(warehouse.gross_profit) + 
     "_until_" + str(sim_until)+delivery_frequency)
-env.process(save_logs(env, warehouse, sim_run_name, 86401))
+env.process(save_logs(env, warehouse, sim_run_name, 86401*7))
 #===============================================================================
 
 start = time.time()
