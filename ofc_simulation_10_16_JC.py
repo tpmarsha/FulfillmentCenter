@@ -1478,31 +1478,31 @@ delivery_frequency = 'daily' # daily or weekly
 shift_schedule = {
     'Sunday': {
         'morning':   {'num_pickers': 14, 'num_stowers':  0, 'num_packers': 2},
-        'afternoon': {'num_pickers': 14, 'num_stowers': 11, 'num_packers': 2},
+        'afternoon': {'num_pickers': 14, 'num_stowers':  0, 'num_packers': 2},
         'evening':   {'num_pickers': 14, 'num_stowers':  0, 'num_packers': 2}},
     'Monday': {
         'morning':   {'num_pickers':  7, 'num_stowers':  0, 'num_packers': 2},
-        'afternoon': {'num_pickers':  7, 'num_stowers':  6, 'num_packers': 2},
+        'afternoon': {'num_pickers':  7, 'num_stowers':  0, 'num_packers': 2},
         'evening':   {'num_pickers':  7, 'num_stowers':  0, 'num_packers': 2}},
     'Tuesday': {
         'morning':   {'num_pickers':  5, 'num_stowers':  0, 'num_packers': 2},
-        'afternoon': {'num_pickers':  5, 'num_stowers':  4, 'num_packers': 2},
+        'afternoon': {'num_pickers':  5, 'num_stowers':  0, 'num_packers': 2},
         'evening':   {'num_pickers':  5, 'num_stowers':  0, 'num_packers': 2}},
     'Wednesday': {
         'morning':   {'num_pickers': 12, 'num_stowers':  0, 'num_packers': 2},
-        'afternoon': {'num_pickers': 12, 'num_stowers': 10, 'num_packers': 2},
+        'afternoon': {'num_pickers': 12, 'num_stowers':  0, 'num_packers': 2},
         'evening':   {'num_pickers': 12, 'num_stowers':  0, 'num_packers': 2}},
     'Thursday': {
         'morning':   {'num_pickers':  7, 'num_stowers':  0, 'num_packers': 2},
-        'afternoon': {'num_pickers':  7, 'num_stowers':  6, 'num_packers': 2},
+        'afternoon': {'num_pickers':  7, 'num_stowers':  0, 'num_packers': 2},
         'evening':   {'num_pickers':  7, 'num_stowers':  0, 'num_packers': 2}},
     'Friday': {
         'morning':   {'num_pickers': 16, 'num_stowers':  0, 'num_packers': 2},
-        'afternoon': {'num_pickers': 16, 'num_stowers': 13, 'num_packers': 2},
+        'afternoon': {'num_pickers': 16, 'num_stowers':  0, 'num_packers': 2},
         'evening':   {'num_pickers': 16, 'num_stowers':  0, 'num_packers': 2}},
     'Saturday': {
         'morning':   {'num_pickers': 17, 'num_stowers':  0, 'num_packers': 1},
-        'afternoon': {'num_pickers': 17, 'num_stowers': 14, 'num_packers': 1},
+        'afternoon': {'num_pickers': 17, 'num_stowers':  0, 'num_packers': 1},
         'evening':   {'num_pickers': 17, 'num_stowers':  0, 'num_packers': 1}}
 }
     
@@ -1534,7 +1534,7 @@ warehouse = FulfillmentCenter(env,
     logging=True) # SIMULATION DECISION
 
 # SIMULATION DECISION:
-sim_until = 86401*7*4*3 # 1 day = 86401 seconds
+sim_until = 86401*7*1 # 1 day = 86401 seconds
 
 # generate process to handle inbound recieving
 env.process(inbound_recieving_dock(env, warehouse, delivery_frequency))
