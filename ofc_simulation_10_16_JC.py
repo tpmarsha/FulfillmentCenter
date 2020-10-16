@@ -502,22 +502,22 @@ class RandomInventoryStorage:
                 # allocate hoodies to the customer order
                 order.allocated_hoodie += hoodie_get_amount
 
-            # calculate num of sweatpants to get from current bin
+            # calculate num of spants to get from current bin
             amount_spants = order.qty_spants - order.allocated_spants
             spants_get_amount = 0
             spants_level = current_bin.avail_spants.level
             if amount_spants > 0 and spants_level > 0:
                 spants_get_amount = min(spants_level, amount_spants)
-                # allocate sweatpants to the customer order
+                # allocate spants to the customer order
                 order.allocated_spants += spants_get_amount
 
-            # calculate num of sneakers to get from current bin
+            # calculate num of sneaks to get from current bin
             amount_sneaks = order.qty_sneaks - order.allocated_sneaks
             sneaks_get_amount = 0
             sneaks_level = current_bin.avail_sneaks.level
             if amount_sneaks > 0 and sneaks_level > 0:
                 sneaks_get_amount = min(sneaks_level, amount_sneaks)
-                # allocate sneakers to the customer order
+                # allocate sneaks to the customer order
                 order.allocated_sneaks += sneaks_get_amount
             
             # yield get() requests events to get inventory, then continue
@@ -633,11 +633,11 @@ class FulfillmentCenter:
         self.logging = logging
 
         # conceptual model givens
-        self.initial_qtys = {
-            'tshirt':10000,
-            'hoodie':5000,
-            'spants':5000,
-            'sneaks':3333}
+        self.initial_qtys = { # TODO: reset to actual values
+            'tshirt': 10000,#10000,
+            'hoodie': 5000,#5000,
+            'spants': 5000,#5000,
+            'sneaks': 3333}#3333}
         self.unit_gross_profit = {
             'tshirt':4,
             'hoodie':10,
@@ -756,6 +756,7 @@ class FulfillmentCenter:
             'total_delivery_expense_returns',
             'total_labor_expense',
             'total_labor_expense_overtime',
+            'total_inventory_holding_cost',
             'total_lost_sales_penalty',
             'fixed_cost_facilities',
             'fixed_cost_packing_stations'])
@@ -786,7 +787,8 @@ class FulfillmentCenter:
             'discarded_time',
             'num_orders_fulfilled',
             'num_orders_discarded',
-            'overtime'])
+            'overtime',
+            'utilization'])
 
         self.log_packer = pd.DataFrame(columns=[
             'shift_start',
@@ -798,7 +800,8 @@ class FulfillmentCenter:
             'active_time',
             'num_orders_shipped',
             'stationed_at',
-            'overtime'])
+            'overtime',
+            'utilization'])
 
         self.log_stower = pd.DataFrame(columns=[
             'shift_start',
@@ -810,7 +813,8 @@ class FulfillmentCenter:
             'active_time',
             'num_trips',
             'total_weight_stowed',
-            'overtime'])
+            'overtime',
+            'utilization'])
         
         self.orders_shipped = 0
         self.orders_cancelled = 0
@@ -886,7 +890,7 @@ class FulfillmentCenter:
         Return:
             native datetime object: utc representation of time
         """
-        start_date = datetime.datetime(2020, 10, 22, 0, 0, tzinfo=None)
+        start_date = datetime.datetime(2020, 10, 22, 0, 0, tzinfo=None) 
         # datetime epoch starts on January 1, 1970 @ 12:00 AM
         # subtract package start date from our start date and get seconds
         start_date_in_seconds = (
@@ -897,10 +901,10 @@ class FulfillmentCenter:
             start_date_in_seconds + self.env.now
             ).astimezone(datetime.timezone.utc)
   
-    def log_kpis(self, env):
+    def log_kpis(self, env, weekday):
         self.log_end_of_shift_kpis = self.log_end_of_shift_kpis.append({
             'idx':env.now,
-            'weekday':self.get_datetime().strftime('%A'),
+            'weekday':weekday,
             'shift':self.current_shift,
             'current_level_parking_tshirt':self.inbound_parking.avail_tshirt.level,
             'current_level_parking_hoodie':self.inbound_parking.avail_hoodie.level,
@@ -919,6 +923,7 @@ class FulfillmentCenter:
             'total_delivery_expense_returns':self.delivery_expense_returns,
             'total_labor_expense':self.labor_expense,
             'total_labor_expense_overtime':self.labor_expense_overtime,
+            'total_inventory_holding_cost':self.inventory_holding_cost,
             'total_lost_sales_penalty':self.lost_sales_penalty,
             'fixed_cost_facilities':self.fixed_cost_facilities,
             'fixed_cost_packing_stations':self.fixed_cost_packing_stations}, ignore_index=True)
@@ -926,6 +931,29 @@ class FulfillmentCenter:
 #------------------------------------------------------------------------------#
 # Process Generators
 #------------------------------------------------------------------------------#
+
+def save_logs(env, warehouse, sim_run_name, save_rate):
+
+    if warehouse.logging:
+        # print parameters list to log
+        with open(f'logs\\{sim_run_name}_parameters.txt', 'w') as f:
+            print(f'sim_until: {sim_until}')
+            print(f'storage_type: {storage_type}', file=f)
+            print(f'delivery_frequency: {delivery_frequency}', file=f)
+            print(f'num_packing_stations: {num_packing_stations}', file=f)
+            print(f'#===============================================================', file=f)
+            print(f'inbound_delivery_daily:\n{inbound_delivery_daily}', file=f)
+            print(f'#===============================================================', file=f)
+            print(f'shift_schedule:\n{shift_schedule}', file=f)
+
+    while(True):
+        yield env.timeout(save_rate)
+        if warehouse.logging:
+            warehouse.log_end_of_shift_kpis.to_csv(f'logs\\{sim_run_name}_log_EOS_kpis.csv', index=False)
+            warehouse.log_processed_orders.to_csv(f'logs\\{sim_run_name}_log_processed_orders.csv', index=False)
+            warehouse.log_picker.to_csv(f'logs\\{sim_run_name}_log_picker.csv', index=False)
+            warehouse.log_packer.to_csv(f'logs\\{sim_run_name}_log_packer.csv', index=False)
+            warehouse.log_stower.to_csv(f'logs\\{sim_run_name}_log_stower.csv', index=False)
 
 def kpi_logger(env, warehouse):
     while True:
@@ -994,6 +1022,9 @@ def inbound_recieving_dock(env, warehouse, freq):
     while True:
         # incur delivery fee
         warehouse.delivery_expense += warehouse.delivery_fee[freq]
+        if freq == 'daily': #TODO jculbert: test edit here. This fixed it, but is this sloppy?
+            weekday = warehouse.get_datetime().strftime("%A")
+            shipment_schedule = warehouse.inbound_delivery_daily[weekday]
 
         # calculate remaining capacity
         remaining_capacity = warehouse.inbound_parking_capacity - (
@@ -1020,9 +1051,9 @@ def inbound_recieving_dock(env, warehouse, freq):
             # update inbound values
             product_allowed_weight = divmod(shipment_weight,4)[0]
             inbound_tshirt = min(inbound_tshirt, divmod(product_allowed_weight, warehouse.unit_weight['tshirt'])[0])
-            inbound_hoodie = min(inbound_tshirt, divmod(product_allowed_weight, warehouse.unit_weight['hoodie'])[0])
-            inbound_spants = min(inbound_tshirt, divmod(product_allowed_weight, warehouse.unit_weight['spants'])[0])
-            inbound_sneaks = min(inbound_tshirt, divmod(product_allowed_weight, warehouse.unit_weight['sneaks'])[0])
+            inbound_hoodie = min(inbound_hoodie, divmod(product_allowed_weight, warehouse.unit_weight['hoodie'])[0])
+            inbound_spants = min(inbound_spants, divmod(product_allowed_weight, warehouse.unit_weight['spants'])[0])
+            inbound_sneaks = min(inbound_sneaks, divmod(product_allowed_weight, warehouse.unit_weight['sneaks'])[0])
 
         # recieve inbound shipment
         if inbound_tshirt > 0:
@@ -1036,14 +1067,14 @@ def inbound_recieving_dock(env, warehouse, freq):
             # track hoodies for holding cost caluclation
             yield warehouse.inventory_tracker.avail_hoodie.put(inbound_hoodie)
         if inbound_spants > 0:
-            # put sweatpants in parking
+            # put spants in parking
             yield warehouse.inbound_parking.avail_spants.put(inbound_spants)
-            # track sweatpants for holding cost caluclation
+            # track spants for holding cost caluclation
             yield warehouse.inventory_tracker.avail_spants.put(inbound_spants)
         if inbound_sneaks > 0:
-            # put sneakers in parking
+            # put sneaks in parking
             yield warehouse.inbound_parking.avail_sneaks.put(inbound_sneaks)
-            # track sneakers for holding cost caluclation
+            # track sneaks for holding cost caluclation
             yield warehouse.inventory_tracker.avail_sneaks.put(inbound_sneaks)
 
         # print(f'{env.now}:\t============== inbound shipment recieved ==============')
@@ -1135,6 +1166,7 @@ def shift_manager(env, warehouse):
             warehouse.current_shift = 'morning'
         print(f'-----\tshift change: {last_shift} to {weekday} {warehouse.current_shift}\t@ {warehouse.get_datetime()} -----')
 
+        # TODO: turn workers back on
         # send pickers to work
         for i in range(1, warehouse.shift_schedule[weekday][warehouse.current_shift]['num_pickers']+1):
             name = f'{env.now}{warehouse.current_shift}{i}'
@@ -1142,23 +1174,23 @@ def shift_manager(env, warehouse):
             env.process(worker_shift(env, warehouse, name, 'picker'))
         # send stowers to work
         for i in range(1, warehouse.shift_schedule[weekday][warehouse.current_shift]['num_stowers']+1):
-            name = f'{env.now}{warehouse.current_shift}{i}'
+           name = f'{env.now}{warehouse.current_shift}{i}'
             # add worker shift process to the environment for a new stower
-            env.process(worker_shift(env, warehouse, name, 'stower'))
+           env.process(worker_shift(env, warehouse, name, 'stower'))
         # send packers to work
         for i in range(1, warehouse.shift_schedule[weekday][warehouse.current_shift]['num_packers']+1):
             name = f'{env.now}{warehouse.current_shift}{i}'
             # add worker shift process to the environment for a new packer
             env.process(worker_shift(env, warehouse, name, 'packer'))
 
-        # simulate wait time until next shift change
+          # simulate wait time until next shift change
         yield env.timeout(warehouse.shift_length)
 
         shift_inventory_holding_cost = warehouse.inventory_holding_cost-starting_inventory_holding_cost
         
         # logging ==============================================================
         if warehouse.logging:
-            warehouse.log_kpis(env)
+            warehouse.log_kpis(env, weekday)
         #=======================================================================
         
         # print(f'{env.now}:\tshift holding cost: {shift_inventory_holding_cost}')
@@ -1195,7 +1227,8 @@ def worker_shift(env, warehouse, name, worker_type):
                 'discarded_time':0,
                 'num_orders_fulfilled':0,
                 'num_orders_discarded':0,
-                'overtime':0}
+                'overtime':0,
+                'utilization':0}
         elif worker_type == 'packer':
             log = {'shift_start':env.now,
                 'date':warehouse.get_datetime().strftime('%m/%d/%Y'),
@@ -1206,7 +1239,8 @@ def worker_shift(env, warehouse, name, worker_type):
                 'active_time':0,
                 'num_orders_shipped':0,
                 'stationed_at':0,
-                'overtime':0}
+                'overtime':0,
+                'utilization':0}
         elif worker_type == 'stower':
             log = {'shift_start':env.now,
                 'date':warehouse.get_datetime().strftime('%m/%d/%Y'),
@@ -1217,7 +1251,8 @@ def worker_shift(env, warehouse, name, worker_type):
                 'active_time':0,
                 'num_trips':0,
                 'total_weight_stowed':0,
-                'overtime':0}
+                'overtime':0,
+                'utilization':0}
     #===========================================================================
     
     # while worker is still working, continue working
@@ -1232,6 +1267,9 @@ def worker_shift(env, warehouse, name, worker_type):
             # logging ==========================================================
             if warehouse.logging:
                 log['overtime'] = overtime
+                log['utilization'] = (
+                    (log['active_time'] + log['overtime'])/
+                    (log['active_time'] + log['overtime'] + log['idle_time']))
             #===================================================================
 
             warehouse.labor_expense += (warehouse.hourly_wage*warehouse.shift_length/60/60)
@@ -1278,7 +1316,7 @@ def worker_shift(env, warehouse, name, worker_type):
                     elif log_details['result']=='fulfilled':
                         log['num_orders_fulfilled'] += 1
                         log['active_time'] += log_details['process_time']
-                    elif details['result'] =='discarded':
+                    elif log_details['result'] =='discarded':
                         log['num_orders_discarded'] += 1
                         log['discarded_time'] += log_details['process_time']
                 #===============================================================
@@ -1386,7 +1424,7 @@ def stower(env, warehouse, name):
         # print(f'{env.now}:\tstower {name} picked up {amount} {product_type} from inbound parking, starts stowing')
         yield env.process(warehouse.inventory.stow_inventory(env, warehouse, product_type, amount, name))
         log_result = 'stowed'
-        log_weight = amount
+        log_weight = amount * warehouse.unit_weight[product_type]
     else:
         # no inbound work remaining to process, check again next step
         yield env.timeout(1)
@@ -1458,7 +1496,7 @@ env = simpy.Environment()
 #===============================================================================
 
 # DECISION:
-storage_type = 'designated' # designated or random
+storage_type = 'random' # designated or random
 
 # DECISION:
 inbound_delivery_daily = {
@@ -1477,50 +1515,34 @@ delivery_frequency = 'daily' # daily or weekly
 # DECISION:
 shift_schedule = {
     'Sunday': {
-        'morning':   {'num_pickers': 14, 'num_stowers':  0, 'num_packers': 2},
-        'afternoon': {'num_pickers': 14, 'num_stowers':  0, 'num_packers': 2},
-        'evening':   {'num_pickers': 14, 'num_stowers':  0, 'num_packers': 2}},
+        'morning':   {'num_pickers': 14, 'num_stowers':   0, 'num_packers': 2},
+        'afternoon': {'num_pickers': 14, 'num_stowers':  15, 'num_packers': 2},
+        'evening':   {'num_pickers': 14, 'num_stowers':   0, 'num_packers': 2}},
     'Monday': {
-        'morning':   {'num_pickers':  7, 'num_stowers':  0, 'num_packers': 2},
-        'afternoon': {'num_pickers':  7, 'num_stowers':  0, 'num_packers': 2},
-        'evening':   {'num_pickers':  7, 'num_stowers':  0, 'num_packers': 2}},
+        'morning':   {'num_pickers':  7, 'num_stowers':   0, 'num_packers': 2},
+        'afternoon': {'num_pickers':  7, 'num_stowers':   8, 'num_packers': 2},
+        'evening':   {'num_pickers':  7, 'num_stowers':   0, 'num_packers': 2}},
     'Tuesday': {
-        'morning':   {'num_pickers':  5, 'num_stowers':  0, 'num_packers': 2},
-        'afternoon': {'num_pickers':  5, 'num_stowers':  0, 'num_packers': 2},
-        'evening':   {'num_pickers':  5, 'num_stowers':  0, 'num_packers': 2}},
+        'morning':   {'num_pickers':  5, 'num_stowers':   0, 'num_packers': 2},
+        'afternoon': {'num_pickers':  5, 'num_stowers':   6, 'num_packers': 2},
+        'evening':   {'num_pickers':  5, 'num_stowers':   0, 'num_packers': 2}},
     'Wednesday': {
-        'morning':   {'num_pickers': 12, 'num_stowers':  0, 'num_packers': 2},
-        'afternoon': {'num_pickers': 12, 'num_stowers':  0, 'num_packers': 2},
-        'evening':   {'num_pickers': 12, 'num_stowers':  0, 'num_packers': 2}},
+        'morning':   {'num_pickers': 12, 'num_stowers':   0, 'num_packers': 2},
+        'afternoon': {'num_pickers': 12, 'num_stowers':  13, 'num_packers': 2},
+        'evening':   {'num_pickers': 12, 'num_stowers':   0, 'num_packers': 2}},
     'Thursday': {
-        'morning':   {'num_pickers':  7, 'num_stowers':  0, 'num_packers': 2},
-        'afternoon': {'num_pickers':  7, 'num_stowers':  0, 'num_packers': 2},
-        'evening':   {'num_pickers':  7, 'num_stowers':  0, 'num_packers': 2}},
+        'morning':   {'num_pickers':  7, 'num_stowers':   0, 'num_packers': 2},
+        'afternoon': {'num_pickers':  7, 'num_stowers':   9, 'num_packers': 2},
+        'evening':   {'num_pickers':  7, 'num_stowers':   0, 'num_packers': 2}},
     'Friday': {
-        'morning':   {'num_pickers': 16, 'num_stowers':  0, 'num_packers': 2},
-        'afternoon': {'num_pickers': 16, 'num_stowers':  0, 'num_packers': 2},
-        'evening':   {'num_pickers': 16, 'num_stowers':  0, 'num_packers': 2}},
+        'morning':   {'num_pickers': 16, 'num_stowers':   0, 'num_packers': 2},
+        'afternoon': {'num_pickers': 16, 'num_stowers':  18, 'num_packers': 2},
+        'evening':   {'num_pickers': 16, 'num_stowers':   0, 'num_packers': 2}},
     'Saturday': {
-        'morning':   {'num_pickers': 17, 'num_stowers':  0, 'num_packers': 1},
-        'afternoon': {'num_pickers': 17, 'num_stowers':  0, 'num_packers': 1},
-        'evening':   {'num_pickers': 17, 'num_stowers':  0, 'num_packers': 1}}
+        'morning':   {'num_pickers': 17, 'num_stowers':   0, 'num_packers': 1},
+        'afternoon': {'num_pickers': 17, 'num_stowers':  20, 'num_packers': 1},
+        'evening':   {'num_pickers': 17, 'num_stowers':   0, 'num_packers': 1}}
 }
-    
-# for i in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']:
-#     shift_schedule[i] = {
-#         'morning': {
-#             'num_pickers': 6, 
-#             'num_stowers': 0, 
-#             'num_packers': 6},
-#         'afternoon': {
-#             'num_pickers': 6, 
-#             'num_stowers': 0, 
-#             'num_packers': 6},
-#         'evening': {
-#             'num_pickers': 6, 
-#             'num_stowers': 0, 
-#             'num_packers': 6}}
-#shift_schedule['Thursday']['afternoon']['num_stowers'] = 7
 
 # DECISION:
 num_packing_stations = 2
@@ -1534,13 +1556,13 @@ warehouse = FulfillmentCenter(env,
     logging=True) # SIMULATION DECISION
 
 # SIMULATION DECISION:
-sim_until = 86401*7*1 # 1 day = 86401 seconds
+sim_until = 86401*8#7*2 # 1 day = 86401 seconds
 
 # generate process to handle inbound recieving
 env.process(inbound_recieving_dock(env, warehouse, delivery_frequency))
 
-# calculate holding cost every timestep
-env.process(holding_cost_monitor(env, warehouse))
+# calculate holding cost every timestep # TODO: turn back on
+#env.process(holding_cost_monitor(env, warehouse))
 
 # print for testing, cancel run if going too poorly
 env.process(kpi_logger(env, warehouse))
@@ -1640,6 +1662,16 @@ env.process(order_reciever(env, warehouse, orders_source))
 # generate process to manage worker schedule in the warehouse
 env.process(shift_manager(env, warehouse))
 
+# logging ======================================================================
+# set custom prefix to be whatever for easier log delineation
+custom_prefix = "testing"
+sim_run_name = (custom_prefix +
+    datetime.datetime.now().strftime('%m%d%Y%H%M') +
+    "_profit_" + str(warehouse.gross_profit) + 
+    "_until_" + str(sim_until)+delivery_frequency)
+env.process(save_logs(env, warehouse, sim_run_name, 86401*7))
+#===============================================================================
+
 start = time.time()
 
 ## Run simulation
@@ -1648,17 +1680,16 @@ env.run(until=sim_until)
 end = time.time()
 print(f'ran sim until {sim_until}, time to run: {end-start}')
 
-# TODO: warehouse log parameters
-# TODO: name based on parameters + unqiue, so we don't keep overwriting
-
-# set custom prefix to be whatever for easier log delineation
-custom_prefix = "t"
-sim_run_name = (custom_prefix +
-    datetime.datetime.now().strftime('%m%d%Y%H%M') +
-    "_profit_" + str(warehouse.gross_profit) + 
-    "_until_" + str(sim_until)+delivery_frequency)
+# # set custom prefix to be whatever for easier log delineation
+# custom_prefix = "no_stow_28d_random"
+# sim_run_name = (custom_prefix +
+#     datetime.datetime.now().strftime('%m%d%Y%H%M') +
+#     "_profit_" + str(warehouse.gross_profit) + 
+#     "_until_" + str(sim_until)+delivery_frequency)
 
 # logging ===============================================================================================
+# TODO: create a named folder to put the logs in unique to the run (os.mkdir)
+# final log
 # save logs to csv
 if warehouse.logging:
     warehouse.log_end_of_shift_kpis.to_csv(f'logs\\{sim_run_name}_log_EOS_kpis.csv', index=False)
@@ -1666,5 +1697,16 @@ if warehouse.logging:
     warehouse.log_picker.to_csv(f'logs\\{sim_run_name}_log_picker.csv', index=False)
     warehouse.log_packer.to_csv(f'logs\\{sim_run_name}_log_packer.csv', index=False)
     warehouse.log_stower.to_csv(f'logs\\{sim_run_name}_log_stower.csv', index=False)
+
+    # print parameters list to log
+    with open(f'logs\\{sim_run_name}_parameters.txt', 'w') as f:
+        print(f'sim_until: {sim_until}')
+        print(f'storage_type: {storage_type}', file=f)
+        print(f'delivery_frequency: {delivery_frequency}', file=f)
+        print(f'num_packing_stations: {num_packing_stations}', file=f)
+        print(f'#===============================================================', file=f)
+        print(f'inbound_delivery_daily:\n{inbound_delivery_daily}', file=f)
+        print(f'#===============================================================', file=f)
+        print(f'shift_schedule:\n{shift_schedule}', file=f)
 #=======================================================================================================
 
