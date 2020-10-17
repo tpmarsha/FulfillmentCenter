@@ -1005,25 +1005,27 @@ def inbound_recieving_dock(env, warehouse, freq):
     """
     week_num = warehouse.get_datetime().isocalendar()[1] - warehouse.week_offset
 
-    # calulate first inbound recieving time (9:00 AM)
-    initial_wait = 9*60*60
-
+    # setup recieving dock for daily or weekly deliveries
+    if freq == 'daily':
+        # calulate first inbound recieving time (today, 9:00 AM)
+        initial_wait = 9*60*60
+        wait = 24*60*60
+    elif freq == 'weekly':
+        # calulate first inbound recieving time (Monday, 9:00 AM)
+        initial_wait = (9*60*60)+(86400*4)
+        wait = 7*24*60*60
+    
     # set delivery frequency for the warehouse
     warehouse.delivery_frequency = freq
 
     # simulate wait until first shipment is delivered
     yield env.timeout(initial_wait)
 
-    # setup recieving dock for daily or weekly deliveries
-    if freq == 'daily':
-        wait = 24*60*60
-    elif freq == 'weekly':
-        wait = 7*24*60*60
-
     # continuously run recieving dock process until simulation ends
     while True:
         week_num = warehouse.get_datetime().isocalendar()[1] - warehouse.week_offset
-
+        time = warehouse.get_datetime()
+        print(time)
         # incur delivery fee
         warehouse.delivery_expense += warehouse.delivery_fee[freq]
         if freq == 'daily':
@@ -1172,7 +1174,7 @@ def shift_manager(env, warehouse):
             warehouse.current_shift = 'morning'
         print(f'-----\tshift change: {last_shift} to {weekday} {warehouse.current_shift}\t@ {warehouse.get_datetime()} -----')
 
-        # TODO: turn workers back on
+        # # TODO: turn workers back on
         # send pickers to work
         for i in range(1, warehouse.shift_schedule[weekday][warehouse.current_shift]['num_pickers']+1):
             name = f'{env.now}{warehouse.current_shift}{i}'
@@ -1519,7 +1521,7 @@ for i in range(1,53):
     inbound_delivery_daily[i] = standard_week
 
 # DECISION:
-delivery_frequency = 'weekly' # daily or weekly
+delivery_frequency = 'daily' # daily or weekly
 
 # DECISION:
 shift_schedule = {
@@ -1565,7 +1567,7 @@ warehouse = FulfillmentCenter(env,
     logging=True) # SIMULATION DECISION
 
 # SIMULATION DECISION:
-sim_until = 86401*3#7*2 # 1 day = 86401 seconds
+sim_until = 86400*7*2 # 1 day = 86400 seconds
 
 # generate process to handle inbound recieving
 env.process(inbound_recieving_dock(env, warehouse, delivery_frequency))
