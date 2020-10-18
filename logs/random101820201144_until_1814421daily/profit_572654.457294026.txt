@@ -1,0 +1,12 @@
+total_gross_profit: 1136498
+total_delivery_expense: 210000
+total_delivery_expense_returns: 0
+total_labor_expense: 156600.0
+total_labor_expense_overtime: 533.5999999999999
+total_inventory_holding_cost: 96709.942705974
+total_lost_sales_penalty: 0
+fixed_cost_packing_stations: 100000
+fixed_cost_facilities: 5000000
+===============================================
+total profit w/o facilities cost: 572654.457294026
+total profit with facilities cost: -4427345.542705974

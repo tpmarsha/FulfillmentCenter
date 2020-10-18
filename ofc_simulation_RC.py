@@ -10,9 +10,8 @@
 ## Program: MSBA, CMU - Tepper School of Business
 ################################################################################
 ## Authors: Tim Marshall, Jonathan Culbert, George Matthew, Thao Spraggins
-## Date: 10-17-2020
-## Version: 1.0.0
-## Email: tpmarsha@tepper.cmu.edu, TODO: email addresses
+## Date: 10-18-2020
+## Version: 1.0.0 Release Candidate
 ## Status: Final Submission
 ################################################################################
 
@@ -98,8 +97,8 @@ class CustomerOrder:
         )
 
     def get_gross_profit(self, env, warehouse):
-        """ Calculate and return the gross profit for this order. Disregards order 
-        status.
+        """ Calculate and return the gross profit for this order. Disregards 
+        order status.
 
         Args:
             env (simpy.Environment): simulation environment
@@ -1784,9 +1783,9 @@ if delivery_frequency == 'daily':
             'morning':   {'num_pickers':  7, 'num_stowers':   0, 'num_packers': 1},
             'afternoon': {'num_pickers': 15, 'num_stowers':   0, 'num_packers': 1},
             'evening':   {'num_pickers': 17, 'num_stowers':  18, 'num_packers': 1}}}
-
     for i in range(1,53):
-        if i == 1: # DECISION: Special schedule for week 1 (Applies to first Wednesday of simulation)
+        # DECISION: Special schedule for week 1 (Applies to first Wednesday of simulation)
+        if i == 1:
             shift_schedule[i] = {
                 'Sunday': {
                     'morning':   {'num_pickers':  8, 'num_stowers':   0, 'num_packers': 2},
@@ -1850,7 +1849,8 @@ elif delivery_frequency == 'weekly':
             'afternoon': {'num_pickers': 17, 'num_stowers':   0, 'num_packers': 1},
             'evening':   {'num_pickers': 17, 'num_stowers':   0, 'num_packers': 1}}}
     for i in range(1,53):
-        if i == 1: # DECISION: Special schedule for week 1 (Applies to first Wednesday of simulation)
+        # DECISION: Special schedule for week 1 (Applies to first Wednesday of simulation)
+        if i == 1: 
             shift_schedule[i] = {
                 'Sunday': {
                     'morning':   {'num_pickers': 14, 'num_stowers':   0, 'num_packers': 2},
@@ -1898,10 +1898,8 @@ sim_log_save_rate = 86400*1
 ################################################################################
 
 # set a random seed for comparing results easily
-
-# TODO jculbert: Removing random seed setting for testing of chosen parameters
-# RANDOM_SEED = 42
-# random.seed(RANDOM_SEED)
+RANDOM_SEED = 42
+random.seed(RANDOM_SEED)
 
 # environment is the clock (event queue)
 env = simpy.Environment()
