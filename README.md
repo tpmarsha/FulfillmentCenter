@@ -1,11 +1,18 @@
 # Amazon Order Fullfilment Center Operations and Supply Chain Simulation
 
+## Contributors
+* Tim Marshall (tpmarsha)
+* Jonathan Culbert (jonculbert)
+* Thao Spraggins
+* George Matthews
+
 ## Context
 This project was implemented to compete with other CMU MSBA teams given a series of strict constraints/rules. The file  *ofc_fullfillment_rules.pdf* describes the problem in detail.
 
 ## Our Approach
 Our team developed an optimized operations and supply chain management policy for a fulfillment center. After data analysis, we created a systems-level simulation to test different strategies for the center’s operations. Although complex, the comprehensive approach allows us to evaluate how the sub-operations within the center interact with each other. This readme covers our simulation architecture, initial exploratory analysis of the 52-week orders,and the following specific operations: 1) Inbound Receiving, 2) Storage, and 3) Outbound Processing.
 
+### click to view full size diagrams
 ![diagram of simulation flow](https://github.com/tpmarsha/FullfillmentCenter/blob/master/images/sim_flow.PNG?raw=true)
 ![diagram of class relationships](https://github.com/tpmarsha/FullfillmentCenter/blob/master/images/relationships.PNG?raw=true)
 ![diagram of event generator functions](https://github.com/tpmarsha/FullfillmentCenter/blob/master/images/generators.PNG?raw=true)
