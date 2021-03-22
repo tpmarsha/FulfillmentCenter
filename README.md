@@ -1,4 +1,4 @@
-# Amazon Order Fullfilment Center Operations and Supply Chain Simulation
+# Amazon Order Fulfillment Center Operations and Supply Chain Simulation
 
 ## Contributors
 * Tim Marshall (tpmarsha)
